@@ -120,3 +120,22 @@
 - result_json
 - status
 - created_at
+
+## Signed requests (replay protection)
+
+When `require_signed_requests=true`, each request must include:
+- `X-MCP-Timestamp` (unix seconds)
+- `X-MCP-Signature` = hex HMAC-SHA256 of `timestamp + "\n" + sha256(body)` using the per-key signing secret.
+
+
+## Tool: get_page
+
+Input:
+```json
+{"site_id":"string","slug":"string"}
+```
+
+Output:
+```json
+{"ok":true,"found":true,"page_id":123,"title":"...","status":"draft","link":"https://..."}
+```

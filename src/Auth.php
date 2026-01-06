@@ -18,7 +18,7 @@ final class Auth
 
         $hash = Crypto::hashApiKey($apiKey);
         $row = $this->db->fetchOne(
-            'SELECT id, name, scopes_json, status FROM mcp_api_keys WHERE key_hash = :h LIMIT 1',
+            'SELECT id, name, scopes_json, signing_secret_enc, status FROM mcp_api_keys WHERE key_hash = :h LIMIT 1',
             [':h' => $hash]
         );
         if ($row === null) return null;
@@ -29,10 +29,20 @@ final class Auth
         $decoded = is_string($sj) ? json_decode($sj, true) : null;
         if (is_array($decoded)) $scopes = $decoded;
 
+        $signingSecret = null;
+        $enc = $row['signing_secret_enc'] ?? null;
+        if (is_string($enc) && $enc !== '') {
+            $secret = (string)($this->config['app_secret'] ?? '');
+            if ($secret !== '') {
+                try { $signingSecret = Crypto::decrypt($enc, $secret); } catch (\Throwable $e) { $signingSecret = null; }
+            }
+        }
+
         return [
             'api_key_id' => (int)$row['id'],
             'name' => (string)($row['name'] ?? 'api-key'),
             'scopes' => $scopes,
+            'signing_secret' => $signingSecret,
         ];
     }
 

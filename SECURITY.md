@@ -41,3 +41,7 @@ This MCP can mutate WordPress content. Treat it as **privileged infrastructure**
 ---
 
 **Security posture:** conservative by design
+
+## Signed requests
+
+Requests can require `X-MCP-Timestamp` + `X-MCP-Signature` (HMAC) using a per-key signing secret, to reduce risk from leaked bearer tokens.

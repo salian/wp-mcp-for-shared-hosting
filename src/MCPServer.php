@@ -8,6 +8,7 @@ require_once __DIR__ . '/Auth.php';
 require_once __DIR__ . '/ToolRegistry.php';
 require_once __DIR__ . '/WPClient.php';
 require_once __DIR__ . '/Crypto.php';
+require_once __DIR__ . '/RateLimiter.php';
 
 final class MCPServer
 {
@@ -15,6 +16,7 @@ final class MCPServer
     private DB $db;
     private Auth $auth;
     private ToolRegistry $tools;
+    private RateLimiter $rateLimiter;
 
     public function __construct()
     {
@@ -22,12 +24,23 @@ final class MCPServer
         $this->db = new DB($this->config['db']);
         $this->auth = new Auth($this->db, $this->config);
         $this->tools = new ToolRegistry($this->db, $this->config);
+        $this->rateLimiter = new RateLimiter($this->db, $this->config);
     }
 
     public function handle(): void
     {
         $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
         $method = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
+
+        if ((bool)($this->config['maintenance_mode'] ?? false)) {
+            $this->json(['ok' => false, 'error' => 'maintenance_mode'], 503);
+            return;
+        }
+
+        if ((bool)($this->config['require_https'] ?? true) && !$this->isHttpsRequest()) {
+            $this->json(['ok' => false, 'error' => 'https_required'], 403);
+            return;
+        }
 
         if ($method === 'GET' && ($path === '/mcp' || $path === '/')) {
             $this->json([
@@ -55,7 +68,21 @@ final class MCPServer
             return;
         }
 
+        // Rate limiting (per API key per minute)
+        if (!$this->rateLimiter->allow((int)$principal['api_key_id'])) {
+            $this->json(['ok' => false, 'error' => 'rate_limited', 'limit_per_minute' => $this->rateLimiter->limit()], 429);
+            return;
+        }
+
         $raw = file_get_contents('php://input') ?: '';
+
+        // Replay protection (timestamp + HMAC signature)
+        if ((bool)($this->config['require_signed_requests'] ?? true)) {
+            if (!$this->verifySignature($principal, $raw)) {
+                $this->json(['ok' => false, 'error' => 'invalid_signature'], 401);
+                return;
+            }
+        }
         $req = json_decode($raw, true);
         if (!is_array($req)) {
             $this->json(['ok' => false, 'error' => 'Invalid JSON'], 400);
@@ -139,5 +166,44 @@ final class MCPServer
     private function clientIp(): string
     {
         return (string)($_SERVER['REMOTE_ADDR'] ?? '');
+    }
+
+    private function isHttpsRequest(): bool
+    {
+        $https = $_SERVER['HTTPS'] ?? '';
+        if (is_string($https) && $https !== '' && strtolower($https) !== 'off') return true;
+
+        $xfp = $_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '';
+        if (is_string($xfp) && strtolower($xfp) === 'https') return true;
+
+        $port = (string)($_SERVER['SERVER_PORT'] ?? '');
+        if ($port === '443') return true;
+
+        return false;
+    }
+
+    private function verifySignature(array $principal, string $rawBody): bool
+    {
+        $ts = $_SERVER['HTTP_X_MCP_TIMESTAMP'] ?? '';
+        $sig = $_SERVER['HTTP_X_MCP_SIGNATURE'] ?? '';
+
+        if (!is_string($ts) || $ts === '' || !is_string($sig) || $sig === '') return false;
+        if (!ctype_digit($ts)) return false;
+
+        $t = (int)$ts;
+        $skew = (int)($this->config['signature_max_skew_seconds'] ?? 300);
+        if ($skew <= 0) $skew = 300;
+
+        $now = time();
+        if (abs($now - $t) > $skew) return false;
+
+        $secret = $principal['signing_secret'] ?? null;
+        if (!is_string($secret) || $secret === '') return false;
+
+        $bodyHash = hash('sha256', $rawBody);
+        $msg = $ts . "\n" . $bodyHash;
+        $expected = hash_hmac('sha256', $msg, $secret);
+
+        return hash_equals($expected, strtolower(trim($sig)));
     }
 }
