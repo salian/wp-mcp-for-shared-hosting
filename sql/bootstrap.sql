@@ -11,3 +11,6 @@
 -- Store the application password encrypted with app_secret using the included Crypto helper.
 -- INSERT INTO wp_sites (site_id, base_url, wp_username, wp_app_password_enc)
 -- VALUES ('example-main', 'https://example.com', 'wp_api_user', 'ENCRYPTED_VALUE_HERE');
+
+
+-- NOTE: Signed requests require a signing secret stored in mcp_api_keys.signing_secret_enc.

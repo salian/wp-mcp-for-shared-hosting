@@ -7,6 +7,7 @@ require_once __DIR__ . '/Tools/CreatePage.php';
 require_once __DIR__ . '/Tools/UpdatePage.php';
 require_once __DIR__ . '/Tools/InsertSection.php';
 require_once __DIR__ . '/Tools/AddMenuItem.php';
+require_once __DIR__ . '/Tools/GetPage.php';
 
 final class ToolRegistry
 {
@@ -69,6 +70,18 @@ final class ToolRegistry
                             'content' => ['type' => 'string'],
                         ],
                         'required' => ['site_id', 'page_id', 'anchor_heading', 'content'],
+                    ],
+                ],
+                [
+                    'name' => 'get_page',
+                    'description' => 'Get a WordPress page by slug',
+                    'input_schema' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'site_id' => ['type' => 'string'],
+                            'slug' => ['type' => 'string'],
+                        ],
+                        'required' => ['site_id', 'slug'],
                     ],
                 ],
                 [

@@ -8,111 +8,41 @@ It is designed specifically for **shared hosting environments** (DreamHost, Blue
 
 ---
 
-## Why this exists
-
-Most AI–CMS integrations assume:
-- Node.js or Python servers
-- background workers
-- WebSockets or streaming
-- managed infrastructure
-
-This project intentionally avoids all of that.
-
-**Goals:**
-- Works on cheap shared hosting
-- Stateless HTTP requests only
-- PHP + MySQL only
-- LLM-agnostic
-- WordPress remains the CMS
-
----
-
-## What this is / is not
-
-**This is:**
-- A remote MCP server
-- A control plane for WordPress
-- A tool interface for LLMs
-
-**This is NOT:**
-- A WordPress plugin
-- A CMS
-- A UI dashboard
-- An autonomous agent runtime
-
----
-
-## High-level architecture
-
-```
-LLM Client (Claude / ChatGPT)
-        ↓ MCP over HTTP
-wp-mcp-for-shared-hosting
-        ↓ WordPress REST API
-WordPress Site
-```
-
----
-
 ## Supported capabilities
 
 - Create WordPress pages
 - Update existing pages
-- Insert sections after headings (best-effort, see notes)
-- Add items to WordPress menus (site-specific; may require WP-side endpoint)
-
-All actions are logged and scoped.
+- Get a page by slug (`get_page`)
+- Insert sections after headings (best-effort HTML insertion)
 
 ---
 
-## Quick start (shared hosting)
+## Security defaults (important)
 
-1. Create a MySQL database and user.
-2. Upload this repo to a folder (recommended: a subdomain) and point web root to `public/`.
-3. Copy `config/config.example.php` to `config/config.php` and fill values.
-4. Run SQL from `sql/schema.sql`.
-5. Create an MCP API key record (see `sql/bootstrap.sql`).
-6. Register a WordPress site in `wp_sites` with base URL and application password.
-7. Call `POST /mcp` with `Authorization: Bearer <MCP_API_KEY>`.
+- Maintenance mode **defaults ON** in `config/config.example.php`
+- HTTPS required (`require_https=true`)
+- Signed requests required (`require_signed_requests=true`)
+- Rate limiting per API key per minute (`rate_limit_per_minute`)
 
----
-
-## Endpoints
-
-- `GET /mcp` – health + basic server info
-- `POST /mcp` – MCP JSON requests
+See `docs/CLIENTS.md` for signed request examples.
 
 ---
 
-## Repository layout
+## Quick start
+
+1. Upload repo and point web root to `public/`
+2. Visit `/install.php` once (generates config + creates API key + signing secret)
+3. Register WordPress site via `/site_helper.php` (optional; then delete/disable it)
+4. Call `POST /mcp` with signed requests
+
+---
+
+## Repo layout
 
 ```
-/wp-mcp-for-shared-hosting/
-├── public/
-│   ├── index.php
-│   └── .htaccess
-├── src/
-│   ├── MCPServer.php
-│   ├── ToolRegistry.php
-│   ├── Auth.php
-│   ├── DB.php
-│   ├── WPClient.php
-│   ├── Crypto.php
-│   └── Tools/
-├── config/
-│   ├── config.example.php
-│   └── config.php          (ignored)
-├── docs/
-├── sql/
-└── examples/
+public/ (web root)
+src/
+config/
+sql/
+docs/
 ```
-
----
-
-## Status
-
-Skeleton implementation intended for contributors. Review SECURITY.md before deploying publicly.
-
-## WordPress site registration helper
-
-After installation, use `https://YOUR_MCP_HOST/site_helper.php` to register a WordPress site (encrypts the WP Application Password and upserts into `wp_sites`). It requires the same `Authorization: Bearer <MCP_API_KEY>` header. Delete the file afterwards or set `site_helper_disabled => true` in `config/config.php`.

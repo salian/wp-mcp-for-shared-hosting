@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS mcp_api_keys (
   key_hash CHAR(64) NOT NULL UNIQUE,
   name VARCHAR(255) NOT NULL,
   scopes_json TEXT NOT NULL DEFAULT '[]',
+  signing_secret_enc TEXT NULL,
   status VARCHAR(20) NOT NULL DEFAULT 'active',
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -31,4 +32,13 @@ CREATE TABLE IF NOT EXISTS mcp_logs (
   INDEX (site_id),
   INDEX (tool_name),
   CONSTRAINT fk_mcp_logs_api_key FOREIGN KEY (api_key_id) REFERENCES mcp_api_keys(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS mcp_rate_limits (
+  api_key_id INT NOT NULL,
+  window_start TIMESTAMP NOT NULL,
+  count INT NOT NULL DEFAULT 0,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (api_key_id, window_start),
+  CONSTRAINT fk_mcp_rl_api_key FOREIGN KEY (api_key_id) REFERENCES mcp_api_keys(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
