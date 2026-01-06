@@ -1,40 +1,39 @@
-# Architecture Overview
+# Architecture
 
-## Request lifecycle
+## High-level flow
 
-1. LLM sends MCP request to `/mcp`
-2. API key validated
-3. Request parsed (handshake / list_tools / call_tool)
-4. Tool handler invoked
-5. WordPress REST API called
-6. Response returned to LLM
-7. Action logged to database
+1. HTTP request arrives at `public/index.php` (web root).
+2. The request is routed to `src/MCPServer.php`.
+3. Server checks:
+   - `maintenance_mode` (503)
+   - HTTPS enforcement (403)
+4. Auth:
+   - bearer API key validation + scope extraction
+5. Rate limit:
+   - DB-based per-key per-minute (429)
+6. Signed request verification:
+   - timestamp + HMAC signature (401)
+7. MCP method dispatch:
+   - `tools/list`
+   - `tools/call`
+8. Tool handler calls WordPress REST API via `src/WPClient.php`.
+9. Result is returned and logged into `mcp_logs`.
 
----
+## Components
 
-## Key principles
+- `public/index.php`: entrypoint
+- `src/MCPServer.php`: request parsing, auth, security gates, tool dispatch
+- `src/Auth.php`: bearer key validation + scope checks
+- `src/RateLimiter.php`: DB-based rate limiting
+- `src/WPClient.php`: WordPress REST API client
+- `src/Tools/*`: tool implementations
+- `sql/schema.sql`: tables for keys, sites, logs, rate limit windows
 
-- Stateless requests
-- Short execution time
-- Explicit tool boundaries
-- No implicit autonomy
+## Shared hosting constraints
 
----
+- No background workers
+- No long-lived processes
+- No streaming responses
+- Minimal dependencies (PDO only)
 
-## Why WordPress logic stays out of MCP
-
-- WordPress internals change frequently
-- Themes vary wildly
-- Block insertion rules are site-specific
-
-This MCP delegates WordPress-specific behavior to:
-- REST endpoints
-- Optional custom WP plugins (out of scope here)
-
----
-
-## Scaling model
-
-- Horizontal scaling via stateless HTTP
-- Database as single source of truth
-- Reverse proxy / CDN friendly
+Last regenerated: 2026-01-06

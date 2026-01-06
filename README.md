@@ -2,47 +2,59 @@
 
 **A WordPress MCP (Model Context Protocol) server that can be self-hosted on any budget shared hosting that supports PHP + MySQL.**
 
-This project provides a lightweight **remote MCP server** that allows LLMs (Claude, ChatGPT, local agents, etc.) to safely control WordPress marketing sites via the WordPress REST API.
+This repository contains a lightweight **remote MCP server** that lets LLMs (Claude, ChatGPT, local agents, etc.) control WordPress marketing sites via the WordPress REST API.
 
-It is designed specifically for **shared hosting environments** (DreamHost, Bluehost, Hostinger, cPanel hosts, etc.) where you cannot run long-lived processes or custom daemons.
-
----
-
-## Supported capabilities
-
-- Create WordPress pages
-- Update existing pages
-- Get a page by slug (`get_page`)
-- Insert sections after headings (best-effort HTML insertion)
+Designed for **shared hosting** (DreamHost, GoDaddy, Bluehost, Hostinger, cPanel hosts) where you cannot run long-lived processes.
 
 ---
 
-## Security defaults (important)
+## What you get
 
-- Maintenance mode **defaults ON** in `config/config.example.php`
-- HTTPS required (`require_https=true`)
-- Signed requests required (`require_signed_requests=true`)
-- Rate limiting per API key per minute (`rate_limit_per_minute`)
-
-See `docs/CLIENTS.md` for signed request examples.
+- A stateless **HTTP** MCP endpoint: `POST /mcp`
+- A small set of **tools** that operate on WordPress pages
+- MySQL-backed logs and rate limiting
+- Security controls that work on shared hosting:
+  - HTTPS-only enforcement
+  - Maintenance mode (deny-by-default)
+  - Per-key per-minute DB rate limiting
+  - Signed requests (timestamp + HMAC) to reduce risk from leaked bearer tokens
 
 ---
 
 ## Quick start
 
-1. Upload repo and point web root to `public/`
-2. Visit `/install.php` once (generates config + creates API key + signing secret)
-3. Register WordPress site via `/site_helper.php` (optional; then delete/disable it)
-4. Call `POST /mcp` with signed requests
+1. Upload this repo to your host (recommended: a subdomain).
+2. Point the web root to `public/`.
+3. Visit `https://YOUR_MCP_HOST/install.php` **once** to:
+   - create `config/config.php`
+   - initialize DB schema
+   - create your first MCP API key + signing secret (shown once)
+4. (Optional) register a WordPress site using `https://YOUR_MCP_HOST/site_helper.php` then disable/delete that helper.
+5. Ensure `maintenance_mode` is **false** in `config/config.php`.
+6. Make signed MCP calls. See `docs/CLIENTS.md`.
 
 ---
 
-## Repo layout
+## Repository layout
 
 ```
-public/ (web root)
-src/
-config/
-sql/
-docs/
+public/        # web root (index.php, install.php, site_helper.php)
+src/           # server code + tools
+config/        # config.example.php, generated config.php
+sql/           # schema.sql
+docs/          # documentation
 ```
+
+---
+
+## Documentation
+
+- `docs/SPEC.md` – protocol, endpoints, tools, request signing
+- `docs/ARCHITECTURE.md` – components and request lifecycle
+- `docs/SECURITY.md` – threat model and hardening checklist
+- `docs/DEPLOYMENT.md` – host-specific deployment notes
+- `docs/CLIENTS.md` – curl + Claude + ChatGPT examples
+
+---
+
+Last regenerated: 2026-01-06
