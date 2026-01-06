@@ -41,4 +41,3 @@ This MCP can mutate WordPress content. Treat it as **privileged infrastructure**
 ---
 
 **Security posture:** conservative by design
-

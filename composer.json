@@ -1,0 +1,9 @@
+{
+  "name": "salian/wp-mcp-for-shared-hosting",
+  "description": "A WordPress MCP server that can be self-hosted on any budget shared hosting that supports PHP + MySQL.",
+  "type": "project",
+  "license": "MIT",
+  "require": {
+    "php": ">=8.0"
+  }
+}

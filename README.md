@@ -58,19 +58,29 @@ WordPress Site
 
 - Create WordPress pages
 - Update existing pages
-- Insert sections after headings
-- Add items to WordPress menus
+- Insert sections after headings (best-effort, see notes)
+- Add items to WordPress menus (site-specific; may require WP-side endpoint)
 
 All actions are logged and scoped.
 
 ---
 
-## Hosting requirements
+## Quick start (shared hosting)
 
-- PHP 8.0+
-- MySQL / MariaDB
-- HTTPS
-- Ability to create subdomains (recommended)
+1. Create a MySQL database and user.
+2. Upload this repo to a folder (recommended: a subdomain) and point web root to `public/`.
+3. Copy `config/config.example.php` to `config/config.php` and fill values.
+4. Run SQL from `sql/schema.sql`.
+5. Create an MCP API key record (see `sql/bootstrap.sql`).
+6. Register a WordPress site in `wp_sites` with base URL and application password.
+7. Call `POST /mcp` with `Authorization: Bearer <MCP_API_KEY>`.
+
+---
+
+## Endpoints
+
+- `GET /mcp` – health + basic server info
+- `POST /mcp` – MCP JSON requests
 
 ---
 
@@ -79,16 +89,30 @@ All actions are logged and scoped.
 ```
 /wp-mcp-for-shared-hosting/
 ├── public/
-│   └── index.php
+│   ├── index.php
+│   └── .htaccess
 ├── src/
+│   ├── MCPServer.php
+│   ├── ToolRegistry.php
+│   ├── Auth.php
+│   ├── DB.php
+│   ├── WPClient.php
+│   ├── Crypto.php
+│   └── Tools/
 ├── config/
-├── logs/
-└── docs/
+│   ├── config.example.php
+│   └── config.php          (ignored)
+├── docs/
+├── sql/
+└── examples/
 ```
 
 ---
 
 ## Status
 
-Early but functional. Designed to be extended conservatively.
+Skeleton implementation intended for contributors. Review SECURITY.md before deploying publicly.
 
+## WordPress site registration helper
+
+After installation, use `https://YOUR_MCP_HOST/site_helper.php` to register a WordPress site (encrypts the WP Application Password and upserts into `wp_sites`). It requires the same `Authorization: Bearer <MCP_API_KEY>` header. Delete the file afterwards or set `site_helper_disabled => true` in `config/config.php`.
